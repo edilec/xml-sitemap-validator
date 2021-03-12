@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Every entry here breaks a different rule. The file is well-formed XML and
+     fully readable, so validating it on its own exits 1, not 2. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/one</loc>
+    <lastmod>2026-02-30</lastmod>
+  </url>
+  <url>
+    <loc>https://EXAMPLE.com/one</loc>
+    <changefreq>fortnightly</changefreq>
+    <priority>3</priority>
+  </url>
+  <url>
+    <loc>/relative/path</loc>
+  </url>
+  <url>
+    <loc>https://example.com/four</loc>
+    <lastmod>28-02-2026</lastmod>
+    <updated>yesterday</updated>
+  </url>
+  <url>
+    <lastmod>2026-02-28</lastmod>
+  </url>
+</urlset>
