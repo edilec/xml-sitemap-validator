@@ -475,3 +475,45 @@ test('determinism: findings are ordered by file, entry, pointer and rule', async
   const second = await validateSitemapTree({ sitemap: join(root, 'a.xml'), root })
   assert.equal(JSON.stringify(first), JSON.stringify(second))
 })
+
+test('the remaining catalog rules fire against real inputs, not just documentation', async (t) => {
+  const control = `https://example.com/${String.fromCharCode(1)}path`
+  const root = await tree(t, {
+    'repeated.xml': `${INDEX_OPEN}`
+      + '<sitemap><loc>https://example.com/child.xml</loc></sitemap>'
+      + '<sitemap><loc>https://example.com/child.xml</loc></sitemap>'
+      + '</sitemapindex>',
+    'child.xml': `${OPEN}<url><loc>https://example.com/a</loc></url></urlset>`,
+    'compressible.xml.gz': gzipSync(Buffer.from(`${OPEN}${'<url><loc>https://example.com/a</loc></url>'.repeat(200)}</urlset>`, 'utf8')),
+    'latin.xml': `<?xml version="1.0" encoding="ISO-8859-1"?>${OPEN}<url><loc>https://example.com/a</loc></url></urlset>`,
+    'values.xml': `${OPEN}`
+      + '<url><loc>   </loc></url>'
+      + `<url><loc>${control}</loc></url>`
+      + '<url><loc>https://example.com/c</loc><extra xmlns=""/></url>'
+      + '</urlset>',
+    'pair.xml': `${OPEN}<url><loc>https://example.com/a</loc></url><url><loc>https://example.com/b</loc></url></urlset>`,
+  })
+  const at = (name, options = {}) => validateSitemapTree({ sitemap: join(root, name), root, ...options })
+
+  const repeated = await at('repeated.xml', { baseUrl: 'https://example.com/repeated.xml' })
+  assert.equal(findingFor(repeated, 'index-repeated-child').severity, 'warning')
+  assert.equal(repeated.summary.files, 2, 'a file listed twice is read once')
+
+  const ratio = await at('compressible.xml.gz', { limits: { maxCompressionRatio: 5 } })
+  assert.equal(findingFor(ratio, 'compression-ratio-suspicious').severity, 'warning')
+
+  assert.equal(findingFor(await at('latin.xml'), 'encoding-declared-unsupported').severity, 'warning')
+
+  const values = await at('values.xml')
+  assert.equal(findingFor(values, 'loc-empty').severity, 'error')
+  assert.equal(findingFor(values, 'loc-control-character').severity, 'error')
+  assert.equal(findingFor(values, 'element-unqualified').severity, 'error')
+
+  const files = await at('repeated.xml', { baseUrl: 'https://example.com/repeated.xml', limits: { maxFiles: 1 } })
+  assert.match(findingFor(files, 'file-limit-exceeded').message, /more than 1 files/)
+  assert.equal(files.status, 'incomplete')
+
+  const entries = await at('pair.xml', { limits: { maxTreeEntries: 1 } })
+  assert.match(findingFor(entries, 'tree-entry-limit-exceeded').message, /more than 1 URLs/)
+  assert.equal(entries.status, 'incomplete')
+})
