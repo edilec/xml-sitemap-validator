@@ -128,6 +128,36 @@ test('acceptance: the 50,000 entry protocol limit is enforced against a real doc
   assert.equal(exitCodeFor(report), 1)
 })
 
+test('acceptance: a document holding no entries is reported, never passed as checked', async (t) => {
+  const root = await tree(t, {
+    'empty-urlset.xml': `${OPEN}</urlset>`,
+    'empty-index.xml': `${INDEX_OPEN}</sitemapindex>`,
+    'whitespace-urlset.xml': `${OPEN}\n   \n</urlset>`,
+    'populated.xml': `${OPEN}<url><loc>https://example.com/a</loc></url></urlset>`,
+  })
+  const at = (name) => validateSitemapTree({ sitemap: join(root, name), root, baseUrl: `https://example.com/${name}` })
+
+  const urlset = await at('empty-urlset.xml')
+  const finding = findingFor(urlset, 'entry-missing')
+  assert.equal(finding.severity, 'error')
+  assert.equal(finding.location.pointer, '/urlset')
+  assert.match(finding.message, /holds no "<url>" entries/)
+  assert.equal(urlset.summary.checked, 0)
+  assert.equal(urlset.status, 'fail', 'a run that checked nothing is never a pass')
+  assert.equal(exitCodeFor(urlset), 1)
+
+  const index = await at('empty-index.xml')
+  assert.match(findingFor(index, 'entry-missing').message, /holds no "<sitemap>" entries/)
+  assert.equal(findingFor(index, 'entry-missing').location.pointer, '/sitemapindex')
+  assert.equal(exitCodeFor(index), 1)
+
+  assert.equal(findingFor(await at('whitespace-urlset.xml'), 'entry-missing').severity, 'error')
+
+  const populated = await at('populated.xml')
+  assert.equal(ruleIds(populated).includes('entry-missing'), false, 'one entry is enough')
+  assert.equal(populated.status, 'pass')
+})
+
 test('acceptance: the 50 MiB uncompressed protocol limit is enforced against a real file', async (t) => {
   assert.equal(PROTOCOL_LIMITS.maxUncompressedBytes, 52428800)
   const head = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>\n${OPEN}\n<!-- `, 'utf8')

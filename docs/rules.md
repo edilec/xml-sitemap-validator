@@ -155,10 +155,19 @@ directly in the input root, which is how mirrored exports are usually laid out.
 | `entry-element-unexpected` | error | a root child is not the expected `url` or `sitemap` |
 | `element-unqualified` | error | an element carries no namespace at all |
 | `unknown-namespace` | warning | elements from an unrecognised namespace, reported once per namespace per file |
+| `entry-missing` | error | the document holds no `url` or `sitemap` entries at all |
 | `entry-limit-exceeded` | error | more than 50,000 entries in one file |
 | `mixed-hosts` | warning | one file lists URLs on several hosts and no scope was declared |
 | `host-scope-not-declared` | info | no `--base-url`, so host and path scope were not verified |
 | `nested-index` | warning | an index is listed by another index; search engines generally do not follow this |
+
+`entry-missing` is an error and not a warning on purpose. The sitemaps.org 0.9
+schema gives `<url>` inside `<urlset>`, and `<sitemap>` inside `<sitemapindex>`,
+the default `minOccurs` of 1, so a document with no entries is not a valid
+sitemap. Reporting it any lower would leave the one outcome a validator must
+never produce standing: `pass` and exit 0 over a file that held nothing to
+check. An empty sitemap is usually a build that produced no routes, which is
+exactly the failure worth catching before it is published.
 
 Recognised extension namespaces are accepted and left unvalidated:
 `sitemap-image/1.1`, `sitemap-video/1.1`, `sitemap-news/0.9`,

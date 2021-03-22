@@ -22,6 +22,9 @@ All notable changes to this project are documented in this file.
 - enforcement of the sitemap protocol limits of 50,000 entries and 50 MiB
   uncompressed per file, kept separate from the tool's own reader bounds so a
   policy violation fails the run while an unreadable input reports `incomplete`;
+- `entry-missing`, which fails a `<urlset>` or `<sitemapindex>` that holds no
+  entries at all, because the 0.9 schema requires at least one and a run that
+  checked nothing must never report `pass`;
 - bounded index recursion that terminates on a self reference or an ancestor
   cycle, reads a repeated child once, and refuses a reference resolving outside
   the declared input root, including one hidden behind percent-encoding;

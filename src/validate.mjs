@@ -236,6 +236,22 @@ export function validateSitemapDocument({ root, file, baseUrl = null, nowMs = nu
     noteForeignNamespace(child, -1, `/${root.local}`)
   }
 
+  // A urlset or sitemapindex holding no entries at all is not a valid document:
+  // the 0.9 schema gives <url> and <sitemap> a minOccurs of 1. This is an error
+  // and not a warning on purpose. The alternative is a vacuous pass, a run that
+  // checked nothing and said so only as a zero in a counter, which is the one
+  // outcome a validator must never produce.
+  if (entryElements.length === 0) {
+    add(
+      'entry-missing',
+      'error',
+      `The "<${root.local}>" element holds no "<${entryName}>" entries, and the sitemap schema requires at least one.`,
+      -1,
+      `/${root.local}`,
+      { suggestion: `List at least one "<${entryName}>", or stop publishing this file.` },
+    )
+  }
+
   if (entryElements.length > PROTOCOL_LIMITS.maxEntriesPerFile) {
     add(
       'entry-limit-exceeded',
