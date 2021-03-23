@@ -14,6 +14,7 @@ import {
   parseW3CDateTime,
   validateSitemapTree,
 } from '../src/index.mjs'
+import { byCodeUnit } from '../src/validate.mjs'
 
 const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..', 'examples')
 const OPEN = `<urlset xmlns="${SITEMAP_NAMESPACE}">`
@@ -504,6 +505,66 @@ test('determinism: findings are ordered by file, entry, pointer and rule', async
   )
   const second = await validateSitemapTree({ sitemap: join(root, 'a.xml'), root })
   assert.equal(JSON.stringify(first), JSON.stringify(second))
+})
+
+test('determinism: the shared comparator orders by UTF-16 code unit, not by locale', () => {
+  // Every pair here is one an ICU collator orders the other way round, which is
+  // the whole point: ICU data differs between Node builds, so a locale-aware
+  // comparator would make the report depend on the machine that produced it.
+  assert.equal(byCodeUnit('Sitemap-B.xml', 'sitemap-a.xml'), -1)
+  assert.equal(byCodeUnit('sitemap-a.xml', 'Sitemap-B.xml'), 1)
+  assert.equal(byCodeUnit('zebra.xml', 'über.xml'), -1)
+  assert.equal(byCodeUnit('tango.xml', 'ßeta.xml'), -1)
+  assert.equal(byCodeUnit('/urlset/url/0/Priority', '/urlset/url/0/extra'), -1)
+  assert.equal(byCodeUnit('same', 'same'), 0)
+  assert.deepEqual(
+    ['sitemap-a.xml', 'ßeta.xml', 'Sitemap-B.xml', 'über.xml', 'tango.xml', 'zebra.xml'].sort(byCodeUnit),
+    ['Sitemap-B.xml', 'sitemap-a.xml', 'tango.xml', 'zebra.xml', 'ßeta.xml', 'über.xml'],
+  )
+})
+
+test('determinism: report order follows code units through mixed-case and non-ASCII names', async (t) => {
+  // "Sitemap-B.xml" precedes "sitemap-a.xml" and "tango.xml" precedes
+  // "ßeta.xml" only under a code unit comparator; a locale-aware one reverses
+  // both, and reverses "Priority" against "extra" inside each file as well.
+  const entry = (path) => `<url><loc>https://example.com/${path}</loc><Priority>1.0</Priority><extra>x</extra></url>`
+  const root = await tree(t, {
+    'index.xml': `${INDEX_OPEN}`
+      + '<sitemap><loc>https://example.com/sitemap-a.xml</loc></sitemap>'
+      + '<sitemap><loc>https://example.com/Sitemap-B.xml</loc></sitemap>'
+      + '<sitemap><loc>https://example.com/tango.xml</loc></sitemap>'
+      + '<sitemap><loc>https://example.com/%C3%9Feta.xml</loc></sitemap>'
+      + '</sitemapindex>',
+    'sitemap-a.xml': `${OPEN}${entry('a')}</urlset>`,
+    'Sitemap-B.xml': `${OPEN}${entry('b')}</urlset>`,
+    'tango.xml': `${OPEN}${entry('t')}</urlset>`,
+    'ßeta.xml': `${OPEN}${entry('s')}</urlset>`,
+  })
+  const report = await validateSitemapTree({
+    sitemap: join(root, 'index.xml'),
+    root,
+    baseUrl: 'https://example.com/index.xml',
+  })
+  assert.equal(report.summary.files, 5, 'every listed member was read')
+  assert.deepEqual(
+    report.findings.map((finding) => `${finding.location.file}${finding.location.pointer ?? ''}`),
+    [
+      'Sitemap-B.xml/urlset/url/0/Priority',
+      'Sitemap-B.xml/urlset/url/0/extra',
+      'sitemap-a.xml/urlset/url/0/Priority',
+      'sitemap-a.xml/urlset/url/0/extra',
+      'tango.xml/urlset/url/0/Priority',
+      'tango.xml/urlset/url/0/extra',
+      'ßeta.xml/urlset/url/0/Priority',
+      'ßeta.xml/urlset/url/0/extra',
+    ],
+  )
+  const again = await validateSitemapTree({
+    sitemap: join(root, 'index.xml'),
+    root,
+    baseUrl: 'https://example.com/index.xml',
+  })
+  assert.equal(JSON.stringify(report), JSON.stringify(again))
 })
 
 test('the remaining catalog rules fire against real inputs, not just documentation', async (t) => {

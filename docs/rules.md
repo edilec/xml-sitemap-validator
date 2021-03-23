@@ -223,7 +223,10 @@ Running this tool twice over identical bytes produces byte-identical stdout.
   precedes entry 10), then `location.pointer`, then `ruleId`, then `message`.
 - All string comparison uses a plain UTF-16 code unit comparator. `localeCompare`
   is never used anywhere in this package, because ICU data differs between Node
-  builds and would make output machine-dependent.
+  builds and would make output machine-dependent. The comparator and the order it
+  produces are both pinned by tests, over mixed-case and non-ASCII file names an
+  ICU collator sorts the other way round, so swapping in a locale-aware
+  comparison fails the suite rather than quietly reordering the report.
 - No wall clock is read. `Date.now()` and `new Date()` with no argument do not
   appear in the source. The only time comparison, `lastmod-in-future`, runs
   against the reference time passed in through `--now`, and is simply not made
