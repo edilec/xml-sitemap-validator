@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
@@ -41,6 +41,60 @@ function findingFor(report, ruleId) {
   assert.ok(match, `expected a "${ruleId}" finding, saw ${JSON.stringify(ruleIds(report))}`)
   return match
 }
+
+test('entry symlink outside root is never read and yields an incomplete local report', async (t) => {
+  const root = await tree(t, { 'placeholder.txt': 'x' })
+  const outside = await tree(t, { 'outside.xml': `${OPEN}<url><loc>https://example.com/private</loc></url></urlset>` })
+  await symlink(join(outside, 'outside.xml'), join(root, 'entry.xml'))
+  const report = await validateSitemapTree({ sitemap: join(root, 'entry.xml'), root })
+  assert.equal(report.status, 'incomplete')
+  assert.equal(exitCodeFor(report), 2)
+  assert.equal(report.summary.urls, 0)
+  assert.equal(findingFor(report, 'file-outside-root').location.file, 'entry.xml')
+  assert.equal(JSON.stringify(report).includes(outside), false)
+});
+
+test('indexed child through an outside symlinked parent is not read', async (t) => {
+  const root = await tree(t, { 'index.xml': `${INDEX_OPEN}<sitemap><loc>https://example.com/alias/child.xml</loc></sitemap></sitemapindex>` })
+  const outside = await tree(t, { 'child.xml': `${OPEN}<url><loc>https://example.com/private</loc></url></urlset>` })
+  await symlink(outside, join(root, 'alias'))
+  const report = await validateSitemapTree({ sitemap: join(root, 'index.xml'), root, baseUrl: 'https://example.com/index.xml' })
+  assert.equal(report.status, 'incomplete')
+  assert.equal(exitCodeFor(report), 2)
+  assert.equal(report.summary.urls, 0)
+  assert.equal(findingFor(report, 'child-outside-root').location.pointer, '/sitemapindex/sitemap/0/loc')
+  assert.equal(JSON.stringify(report).includes(outside), false)
+});
+
+test('an in-root symlink to a local child remains readable', async (t) => {
+  const root = await tree(t, {
+    'index.xml': `${INDEX_OPEN}<sitemap><loc>https://example.com/alias.xml</loc></sitemap></sitemapindex>`,
+    'child.xml': `${OPEN}<url><loc>https://example.com/public</loc></url></urlset>`,
+  })
+  await symlink(join(root, 'child.xml'), join(root, 'alias.xml'))
+  const report = await validateSitemapTree({ sitemap: join(root, 'index.xml'), root, baseUrl: 'https://example.com/index.xml' })
+  assert.equal(report.status, 'pass')
+  assert.equal(report.summary.urls, 1)
+});
+
+test('an in-root entry symlink remains readable', async (t) => {
+  const root = await tree(t, { 'actual.xml': `${OPEN}<url><loc>https://example.com/public</loc></url></urlset>` })
+  await symlink(join(root, 'actual.xml'), join(root, 'entry.xml'))
+  const report = await validateSitemapTree({ sitemap: join(root, 'entry.xml'), root })
+  assert.equal(report.status, 'pass')
+  assert.equal(report.summary.urls, 1)
+});
+
+test('an indexed child file symlink outside root is refused', async (t) => {
+  const root = await tree(t, { 'index.xml': `${INDEX_OPEN}<sitemap><loc>https://example.com/child.xml</loc></sitemap></sitemapindex>` })
+  const outside = await tree(t, { 'outside.xml': `${OPEN}<url><loc>https://example.com/private</loc></url></urlset>` })
+  await symlink(join(outside, 'outside.xml'), join(root, 'child.xml'))
+  const report = await validateSitemapTree({ sitemap: join(root, 'index.xml'), root, baseUrl: 'https://example.com/index.xml' })
+  assert.equal(report.status, 'incomplete')
+  assert.equal(report.summary.urls, 0)
+  assert.equal(findingFor(report, 'child-outside-root').location.file, 'index.xml')
+  assert.equal(JSON.stringify(report).includes(outside), false)
+});
 
 test('acceptance: the shipped clean tree passes, with valid namespaces and compressed input', async () => {
   const report = await validateSitemapTree({

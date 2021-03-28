@@ -118,7 +118,7 @@ declared input root. The walk:
 - reads a file listed twice only once (`index-repeated-child`);
 - stops at `maxIndexDepth` (`index-depth-exceeded`);
 - refuses a reference that resolves outside the input root, including one hidden
-  behind percent-encoding (`child-outside-root`);
+  behind percent-encoding or a symlinked file/parent (`child-outside-root`);
 - reports a reference it cannot map to a local file rather than assuming the
   file is fine (`child-sitemap-unresolved`).
 
@@ -133,6 +133,7 @@ directly in the input root, which is how mirrored exports are usually laid out.
 | ruleId | Severity | Incomplete | Meaning |
 | --- | --- | :---: | --- |
 | `file-unreadable` | error | yes | the file could not be opened, or is not a regular file |
+| `file-outside-root` | error | yes | an entry or visited file's real path leaves the input root; it was not read |
 | `input-limit-exceeded` | error | yes | a reader bound was reached, so the file was not evaluated |
 | `decompression-failed` | error | yes | the gzip stream is corrupt or truncated |
 | `decompressed-limit-exceeded` | error | yes | the gzip stream expands past `maxDecompressedBytes` |
@@ -199,7 +200,7 @@ Recognised extension namespaces are accepted and left unvalidated:
 | `index-cycle` | error | the index references itself or one of its ancestors |
 | `index-repeated-child` | warning | the same file is listed more than once in the tree |
 | `index-depth-exceeded` | error | following the reference would pass `maxIndexDepth` |
-| `child-outside-root` | error | the reference resolves outside the declared input root |
+| `child-outside-root` | error | yes | the reference's lexical or real path leaves the declared input root; it was not read |
 | `child-sitemap-unresolved` | warning | the reference could not be mapped to a local file |
 
 ### Dates

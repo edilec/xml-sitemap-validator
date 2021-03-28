@@ -49,7 +49,7 @@ xml-sitemap-validator --sitemap FILE [--root DIR] [--base-url URL]
 | Option | Meaning |
 | --- | --- |
 | `--sitemap FILE` | entry sitemap or sitemap index (required) |
-| `--root DIR` | directory the tree lives in; defaults to the entry file's directory. Nothing outside it is ever read |
+| `--root DIR` | directory the tree lives in; defaults to the entry file's directory. Entry and child real paths, including symlink targets, must stay inside its real path; an escape yields incomplete exit 2 without reading the target |
 | `--base-url URL` | published location of the entry file. Enables host and path scope checks and maps index references onto files |
 | `--now W3CDATETIME` | reference time for the future-`lastmod` warning. Without it no clock is read and the check is simply not made |
 | `--max-index-depth N` | index nesting levels followed below the entry file (default 3) |

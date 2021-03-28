@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- Entry and indexed child paths now require a real path inside the declared root before reading, including when a symlinked file or parent resolves outside it. Out-of-root evidence produces an incomplete report with local provenance.
+
 ### Added
 
 - a bounded, non-evaluating XML reader that refuses `<!DOCTYPE` and every entity

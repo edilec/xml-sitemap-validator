@@ -18,7 +18,7 @@
  * that already exist inside the declared input root.
  */
 
-import { readFile, stat } from 'node:fs/promises'
+import { readFile, realpath, stat } from 'node:fs/promises'
 import { dirname, relative, resolve, sep } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
@@ -179,6 +179,8 @@ export async function validateSitemapTree(options) {
   if (entryAbsolute !== rootDirectory && !entryAbsolute.startsWith(rootDirectory + sep)) {
     throw new TypeError('options.sitemap must be inside options.root')
   }
+  const realRoot = await realpath(rootDirectory)
+  const insideRealRoot = (path) => path === realRoot || path.startsWith(realRoot + sep)
 
   const entryBaseUrl = normaliseBaseUrl(options.baseUrl ?? null)
   const nowMs = normaliseNow(options.now ?? null)
@@ -205,9 +207,22 @@ export async function validateSitemapTree(options) {
 
   /** Read one file under bounds. Returns null when the input could not be evaluated. */
   const readSitemapFile = async (absolute, file) => {
+    let realFile
+    try {
+      realFile = await realpath(absolute)
+    } catch (error) {
+      incomplete = true
+      record('file-unreadable', 'error', `The file could not be read: ${error.code ?? 'unknown error'}.`, file, -1, null)
+      return null
+    }
+    if (!insideRealRoot(realFile)) {
+      incomplete = true
+      record('file-outside-root', 'error', 'The file resolves outside the declared input root and was not read.', file, -1, null)
+      return null
+    }
     let stats
     try {
-      stats = await stat(absolute)
+      stats = await stat(realFile)
     } catch (error) {
       incomplete = true
       record('file-unreadable', 'error', `The file could not be read: ${error.code ?? 'unknown error'}.`, file, -1, null)
@@ -234,7 +249,7 @@ export async function validateSitemapTree(options) {
 
     let raw
     try {
-      raw = await readFile(absolute)
+      raw = await readFile(realFile)
     } catch (error) {
       incomplete = true
       record('file-unreadable', 'error', `The file could not be read: ${error.code ?? 'unknown error'}.`, file, -1, null)
@@ -429,6 +444,7 @@ export async function validateSitemapTree(options) {
       const resolved = resolveChildPath(entry.url, rootDirectory, ownBaseUrl)
       if (resolved === null || !resolved.inside) {
         if (resolved !== null && !resolved.inside) {
+          incomplete = true
           record(
             'child-outside-root',
             'error',
@@ -455,6 +471,13 @@ export async function validateSitemapTree(options) {
       }
 
       const childAbsolute = resolved.absolute
+      let realChild
+      try { realChild = await realpath(childAbsolute) } catch { /* unresolved below */ }
+      if (realChild !== undefined && !insideRealRoot(realChild)) {
+        incomplete = true
+        record('child-outside-root', 'error', 'The referenced sitemap resolves outside the declared input root and was not read.', file, entry.ordinal, pointer)
+        continue
+      }
       if (chain.includes(childAbsolute)) {
         record(
           'index-cycle',
