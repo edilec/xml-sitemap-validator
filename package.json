@@ -1,0 +1,50 @@
+{
+  "name": "xml-sitemap-validator",
+  "version": "0.1.0",
+  "description": "Validate local XML and gzipped sitemap trees for namespaces, allowed fields, URL and date syntax, host scope, duplicates and bounded index recursion.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "node --check src/index.mjs && node --check src/validate.mjs && node --check src/xml.mjs && node --check bin/xml-sitemap-validator.mjs && node --check test/xml-reader.test.mjs && node --check test/sitemap.test.mjs && node --check test/cli.test.mjs",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/**",
+    "example": "node bin/xml-sitemap-validator.mjs --sitemap examples/clean/sitemap-index.xml --base-url https://example.com/sitemap-index.xml",
+    "pack:check": "npm pack --dry-run",
+    "check": "npm run lint && npm test && npm run example && npm run pack:check"
+  },
+  "license": "MIT",
+  "bin": {
+    "xml-sitemap-validator": "./bin/xml-sitemap-validator.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "sitemap",
+    "sitemap-index",
+    "xml",
+    "seo",
+    "validation",
+    "cli"
+  ],
+  "author": "Edilec Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edilec/xml-sitemap-validator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edilec/xml-sitemap-validator/issues"
+  },
+  "homepage": "https://github.com/edilec/xml-sitemap-validator#readme"
+}

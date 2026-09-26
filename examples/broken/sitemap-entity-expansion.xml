@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE urlset [
+  <!ENTITY payload SYSTEM "file:///nonexistent/placeholder.txt">
+]>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/&payload;</loc>
+  </url>
+</urlset>
