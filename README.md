@@ -189,6 +189,11 @@ Validation is a floor, not a guarantee. A tree this tool passes is well-formed
 and internally consistent; whether it is *correct* for your site is a question
 about your site, which no file-level checker can answer.
 
+For the broader release workflow—partitioning large sitemaps and comparing
+declared coverage with the site's intended URL set—see Edilec's
+[sitemap partitioning guide](https://edilec.com/blog/proeng-11045/sitemap-partitioning-large-sites-coverage-diagnostics/).
+Those checks need evidence beyond the local XML tree this CLI reads.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).
