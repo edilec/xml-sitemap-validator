@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+## [0.1.0] - 2026-09-28
+
 ### Fixed
 
 - Entry and indexed child paths now require a real path inside the declared root before reading, including when a symlinked file or parent resolves outside it. Out-of-root evidence produces an incomplete report with local provenance.
@@ -42,5 +44,3 @@ All notable changes to this project are documented in this file.
   external entity declaration;
 - the rule catalog, limit reference and determinism guarantee in
   `docs/rules.md`.
-
-No release has been published.
