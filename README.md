@@ -23,17 +23,18 @@ It is deliberately small: Node built-ins only, zero runtime and zero development
 dependencies, and its own XML reader that refuses DTDs and expands no entities,
 because a sitemap from a CMS export is untrusted input.
 
-## Install
+## Run locally
 
 Node.js 22 or newer. No dependencies to install.
 
 ```sh
-npm install xml-sitemap-validator
-# or run it without installing
-npx xml-sitemap-validator --help
+git clone https://github.com/edilec/xml-sitemap-validator.git
+cd xml-sitemap-validator
+node bin/xml-sitemap-validator.mjs --sitemap examples/clean/sitemap-index.xml --base-url https://example.com/sitemap-index.xml
 ```
 
-From a checkout:
+The package is not published to npm; run it from a checkout. To verify that
+checkout:
 
 ```sh
 npm run check     # lint, tests, the runnable example, and a packaging dry run
